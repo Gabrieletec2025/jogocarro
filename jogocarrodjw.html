@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Race Car</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background-image: url("https://tse4.mm.bing.net/th/id/OIP.I4OyHCHziIjHJZYeMybaagHaEJ?cb=12&w=626&h=351&rs=1&pid=ImgDetMain&o=7&rm=3");
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position: center;
+        font-family: Arial, sans-serif;
+    }
+    #meu_canvas {
+        display: block;
+        background-color: rgba(0,0,0,0.8);
+        margin: 0 auto;
+    }
+    #pontuacao {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-size: 24px;
+        color: #fff;
+    }
+    #menu {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #fff;
+        font-size: 24px;
+    }
+    #menu button {
+        padding: 10px 20px;
+        font-size: 20px;
+        margin: 5px;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+<canvas id="meu_canvas"></canvas>
+<div id="menu">
+    <p>Escolha a dificuldade:</p>
+    <button onclick="iniciarJogo('facil')">Fácil</button>
+    <button onclick="iniciarJogo('medio')">Médio</button>
+    <button onclick="iniciarJogo('dificil')">Difícil</button>
+</div>
+<div id="pontuacao">Pontuação: 0</div>
+
+<script>
+const som = new Audio('som.crdownload');
+const sommenu = new Audio('sommenu.crdownload')
+const sommorte = new Audio('sommorte.crdownload')
+const canvas = document.getElementById("meu_canvas");
+const ctx = canvas.getContext('2d');
+canvas.width = 480;
+canvas.height = 600;
+
+const imgCarro = new Image();
+imgCarro.src = "https://images.vexels.com/media/users/3/200774/isolated/preview/e0ea41bf5ace04915641ff881d587850-pixel-verde-do-carro-do-ve-iacute-culo-by-vexels.png";
+const imgObstaculo = new Image();
+imgObstaculo.src = "https://images.vexels.com/media/users/3/200775/isolated/lists/a07e43c30c7bf218fe156dcbaadc8e48-pixel-vermelho-do-carro-do-veiculo.png";
+
+
+let jogoAtivo = false;
+let pontuacao = 0;
+let carro, obstaculos = [], teclado = {};
+let velocidadeObstaculo = 5;
+let intervaloObstaculos = 60;
+let contadorObstaculos = 0;
+let pontosParaAumentarVelocidade = 60;
+
+
+function iniciarJogo(dificuldade) {
+    jogoAtivo = true;
+    document.getElementById("menu").style.display = "none";
+    pontuacao = 0;
+    obstaculos = [];
+    teclado = {};
+    contadorObstaculos = 0;
+
+    switch(dificuldade){
+        case 'facil':
+            sommenu.play()
+            velocidadeObstaculo = 3;
+            intervaloObstaculos = 80;
+            break;
+        case 'medio':
+            sommenu.play()
+            velocidadeObstaculo = 6;
+            intervaloObstaculos = 60;
+            break;
+        case 'dificil':
+            sommenu.play()
+            velocidadeObstaculo = 10;
+            intervaloObstaculos = 40;
+            break;
+        default:
+            velocidadeObstaculo = 5;
+            intervaloObstaculos = 60;
+    }
+
+    carro = {
+        x: canvas.width/2 - 45,
+        y: canvas.height - 120,
+        largura: 90,
+        altura: 90,
+        velocidade: 8
+    };
+
+    atualizarJogo();
+}
+
+function desenharCarro() {
+    ctx.drawImage(imgCarro, carro.x, carro.y, carro.largura, carro.altura);
+}
+
+function moverCarro() {
+    if (teclado["ArrowLeft"] && carro.x > 0) carro.x -= carro.velocidade;
+    if (teclado["ArrowRight"] && carro.x < canvas.width - carro.largura) carro.x += carro.velocidade;
+}
+
+
+function gerarObstaculos() {
+    if (contadorObstaculos <= 0) {
+        const tamanho = 90;
+        const x = Math.random() * (canvas.width - tamanho);
+        obstaculos.push({x: x, y: -tamanho, largura: tamanho, altura: tamanho});
+        contadorObstaculos = intervaloObstaculos;
+    } else {
+        contadorObstaculos--;
+    }
+}
+
+function desenharObstaculos() {
+    for (let o of obstaculos) {
+        ctx.drawImage(imgObstaculo, o.x, o.y, o.largura, o.altura);
+    }
+}
+
+function moverObstaculos() {
+    let pontosGanhos = 0;
+    obstaculos = obstaculos.filter(o => {
+        o.y += velocidadeObstaculo;
+        if (o.y > canvas.height) {
+            const som2 = som.cloneNode();
+            som2.play();
+            pontosGanhos += 10;
+            
+            return false;
+        }
+        return true;
+    });
+    if (pontosGanhos > 0) {
+        
+        pontuacao += pontosGanhos;
+        document.getElementById("pontuacao").innerText = "Pontuação: " + pontuacao;
+        if (pontuacao % pontosParaAumentarVelocidade === 0) velocidadeObstaculo++;
+    }
+}
+
+function verificarColisoes() {
+    const margem = 5;
+    for (let o of obstaculos) {
+        if (
+            carro.x + margem < o.x + o.largura - margem &&
+            carro.x + carro.largura - margem > o.x + margem &&
+            carro.y + margem < o.y + o.altura - margem &&
+            carro.y + carro.altura - margem > o.y + margem
+        ) {
+            sommorte.play()
+            alert("Você perdeu")
+            reiniciarJogo();
+            break;
+        }
+    }
+}
+
+function atualizarJogo() {
+    if (!jogoAtivo) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    moverCarro();
+    gerarObstaculos();
+    moverObstaculos();
+    verificarColisoes();
+    desenharCarro();
+    desenharObstaculos();
+    requestAnimationFrame(atualizarJogo);
+}
+
+function reiniciarJogo() {
+    jogoAtivo = false;
+    pontuacao = 0;
+    document.getElementById("pontuacao").innerText = "Pontuação: 0";
+    document.getElementById("menu").style.display = "block";
+}
+
+
+window.addEventListener("keydown", e => teclado[e.key] = true);
+window.addEventListener("keyup", e => teclado[e.key] = false);
+</script>
+</body>
+</html>
